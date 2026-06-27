@@ -174,6 +174,30 @@
             margin: 0 0 1rem 0;
         }
 
+        .attendance-form .location-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .attendance-form .helper-text {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+        }
+
+        .attendance-form .secondary-button {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid #dbeafe;
+            border-radius: 10px;
+            background: var(--bg-light);
+            color: var(--primary-color);
+            cursor: pointer;
+            font-weight: 600;
+        }
+
         .attendance-status {
             color: var(--primary-color);
             font-weight: 600;
@@ -588,14 +612,31 @@
             <h2>เช็คชื่อเลย</h2>
             <div class="attendance-card">
                 <div class="attendance-form">
+                    <label for="studentId">รหัสนักศึกษา / รหัสพนักงาน</label>
+                    <input id="studentId" type="text" placeholder="กรอกรหัสนักศึกษา" />
+
                     <label for="attendeeName">ชื่อผู้เช็คชื่อ</label>
                     <input id="attendeeName" type="text" placeholder="กรอกชื่อของคุณ" />
+
+                    <label for="courseCode">รหัสวิชา / โปรเจค</label>
+                    <input id="courseCode" type="text" placeholder="กรอกรหัสวิชา เช่น IT101" />
 
                     <label for="attendanceMode">เลือกประเภท</label>
                     <select id="attendanceMode">
                         <option value="checkin">เช็คชื่อเข้า</option>
                         <option value="checkout">เช็คชื่อออก</option>
                     </select>
+
+                    <label for="targetLatitude">ละติจูดจุดเช็คชื่อ</label>
+                    <div class="location-row">
+                        <input id="targetLatitude" type="number" step="0.000001" value="13.7563" />
+                        <input id="targetLongitude" type="number" step="0.000001" value="100.5018" />
+                    </div>
+
+                    <label for="targetRadius">รัศมี (เมตร)</label>
+                    <input id="targetRadius" type="number" min="10" step="1" value="100" />
+                    <p class="helper-text">ระบบจะยอมรับการเช็คชื่อได้ก็ต่อเมื่อคุณอยู่ภายในรัศมีที่กำหนด</p>
+                    <button id="useCurrentLocationBtn" class="secondary-button">ใช้ตำแหน่งปัจจุบัน</button>
 
                     <button id="attendanceBtn" class="cta-button">เช็คชื่อตอนนี้</button>
                     <p id="attendanceStatus" class="attendance-status">กำลังรอการเช็คชื่อ...</p>
@@ -782,8 +823,14 @@
 
         // Attendance system
         const attendanceBtn = document.getElementById('attendanceBtn');
+        const studentIdInput = document.getElementById('studentId');
         const attendeeNameInput = document.getElementById('attendeeName');
+        const courseCodeInput = document.getElementById('courseCode');
         const attendanceModeSelect = document.getElementById('attendanceMode');
+        const targetLatitudeInput = document.getElementById('targetLatitude');
+        const targetLongitudeInput = document.getElementById('targetLongitude');
+        const targetRadiusInput = document.getElementById('targetRadius');
+        const useCurrentLocationBtn = document.getElementById('useCurrentLocationBtn');
         const attendanceStatus = document.getElementById('attendanceStatus');
         const locationText = document.getElementById('locationText');
         const attendanceList = document.getElementById('attendanceList');
@@ -801,7 +848,7 @@
                     dateStyle: 'medium',
                     timeStyle: 'short'
                 });
-                return `<li><strong>${record.name}</strong> — ${record.type === 'checkin' ? 'เช็คชื่อเข้า' : 'เช็คชื่อออก'}<br>${time}</li>`;
+                return `<li><strong>${record.studentId} | ${record.name}</strong> — ${record.courseCode} — ${record.type === 'checkin' ? 'เช็คชื่อเข้า' : 'เช็คชื่อออก'}<br>${time}</li>`;
             }).join('');
         }
 
@@ -809,9 +856,32 @@
             attendanceStatus.textContent = message;
         }
 
+        function calculateDistanceMeters(lat1, lon1, lat2, lon2) {
+            const toRad = value => value * Math.PI / 180;
+            const earthRadius = 6371000;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return earthRadius * c;
+        }
+
         function saveAttendance(position) {
+            const studentId = studentIdInput.value.trim();
             const name = attendeeNameInput.value.trim();
+            const courseCode = courseCodeInput.value.trim();
             const type = attendanceModeSelect.value;
+            const targetLat = parseFloat(targetLatitudeInput.value);
+            const targetLon = parseFloat(targetLongitudeInput.value);
+            const radius = parseFloat(targetRadiusInput.value);
+
+            if (!studentId) {
+                setStatus('กรอกรหัสนักศึกษาหรือรหัสพนักงานก่อนเช็คชื่อ');
+                studentIdInput.focus();
+                return;
+            }
 
             if (!name) {
                 setStatus('กรอกชื่อก่อนเช็คชื่อ');
@@ -819,13 +889,34 @@
                 return;
             }
 
+            if (!courseCode) {
+                setStatus('กรอกรหัสวิชา/โปรเจคก่อนเช็คชื่อ');
+                courseCodeInput.focus();
+                return;
+            }
+
+            if (Number.isNaN(targetLat) || Number.isNaN(targetLon) || Number.isNaN(radius) || radius <= 0) {
+                setStatus('กรอกพิกัดจุดเช็คชื่อและรัศมีให้ถูกต้อง');
+                return;
+            }
+
+            const distance = calculateDistanceMeters(position.coords.latitude, position.coords.longitude, targetLat, targetLon);
+            if (distance > radius) {
+                locationText.textContent = `ตำแหน่งปัจจุบัน: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)} | ห่างจากจุดตั้ง ${Math.round(distance)} เมตร`;
+                setStatus(`อยู่นอกพื้นที่ที่กำหนด (${Math.round(distance)}m จากจุดเช็คชื่อ)`);
+                return;
+            }
+
             const record = {
+                studentId,
                 name,
+                courseCode,
                 type,
                 timestamp: new Date().toISOString(),
                 latitude: position.coords.latitude,
                 longitude: position.coords.longitude,
-                accuracy: position.coords.accuracy
+                accuracy: position.coords.accuracy,
+                distance
             };
 
             const records = JSON.parse(localStorage.getItem(storageKey) || '[]');
@@ -833,13 +924,13 @@
             localStorage.setItem(storageKey, JSON.stringify(records.slice(0, 20)));
 
             const label = type === 'checkin' ? 'เช็คชื่อเข้า' : 'เช็คชื่อออก';
-            locationText.textContent = `ตำแหน่งล่าสุด: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)} (ความแม่นยำ ${Math.round(position.coords.accuracy)}m)`;
-            setStatus(`${label} สำเร็จแล้วสำหรับ ${name}`);
+            locationText.textContent = `ตำแหน่งปัจจุบัน: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)} | อยู่ในรัศมี ${Math.round(radius)}m`;
+            setStatus(`${label} สำเร็จแล้วสำหรับ ${name} (${Math.round(distance)}m จากจุดเช็คชื่อ)`);
             attendeeNameInput.value = '';
             renderRecords();
         }
 
-        attendanceBtn.addEventListener('click', function () {
+        function requestLocation(callback) {
             if (!navigator.geolocation) {
                 setStatus('เบราว์เซอร์ของคุณไม่รองรับตำแหน่ง');
                 return;
@@ -847,7 +938,7 @@
 
             setStatus('กำลังขอสิทธิ์ตำแหน่ง...');
             navigator.geolocation.getCurrentPosition(
-                saveAttendance,
+                callback,
                 function () {
                     setStatus('ไม่สามารถใช้ตำแหน่งได้ กรุณาอนุญาตให้เข้าถึงตำแหน่ง');
                 },
@@ -857,6 +948,18 @@
                     maximumAge: 0
                 }
             );
+        }
+
+        attendanceBtn.addEventListener('click', function () {
+            requestLocation(saveAttendance);
+        });
+
+        useCurrentLocationBtn.addEventListener('click', function () {
+            requestLocation(function (position) {
+                targetLatitudeInput.value = position.coords.latitude.toFixed(6);
+                targetLongitudeInput.value = position.coords.longitude.toFixed(6);
+                setStatus('ตั้งจุดเช็คชื่อจากตำแหน่งปัจจุบันแล้ว');
+            });
         });
     </script>
 </body>
