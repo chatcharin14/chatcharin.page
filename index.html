@@ -286,6 +286,71 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
 
+        /* Grade Calculator Section */
+        .grade-calculator {
+            background: var(--white);
+        }
+
+        .grade-card {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            background: var(--bg-light);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .grade-card label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .grade-card input,
+        .grade-card button {
+            width: 100%;
+            padding: 0.9rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        .grade-card button {
+            background: var(--primary-color);
+            color: var(--white);
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .grade-card button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .grade-result {
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: 15px;
+            border: 1px solid #e2e8f0;
+            min-height: 150px;
+        }
+
+        .grade-result h3 {
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+        }
+
+        .grade-result p {
+            color: var(--text-dark);
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
         .skill-icon {
             font-size: 3rem;
             margin-bottom: 1rem;
@@ -498,6 +563,7 @@
             <ul>
                 <li><a href="#about">ฟีเจอร์</a></li>
                 <li><a href="#skills">วิธีใช้</a></li>
+                <li><a href="#grade">คำนวณเกรด</a></li>
                 <li><a href="#attendance">เช็คชื่อ</a></li>
                 <li><a href="#portfolio">ตัวอย่าง</a></li>
                 <li><a href="#contact">ติดต่อ</a></li>
@@ -585,6 +651,24 @@
                     <div class="skill-icon">🆓</div>
                     <h3>ใช้งานฟรี</h3>
                     <p>เริ่มต้นใช้งานได้ง่าย ๆ โดยไม่ต้องเสียค่าใช้จ่ายสูง</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Grade Calculator Section -->
+    <section class="grade-calculator" id="grade">
+        <div class="container">
+            <h2>คำนวณเกรดคะแนน</h2>
+            <div class="grade-card">
+                <div>
+                    <label for="scoreInput">ใส่คะแนน</label>
+                    <input id="scoreInput" type="number" min="0" max="100" placeholder="กรอกคะแนน 0-100" />
+                    <button id="gradeBtn">คำนวณเกรด</button>
+                </div>
+                <div class="grade-result" id="gradeResult">
+                    <h3>ผลลัพธ์เกรดของคุณ</h3>
+                    <p>กรอกคะแนนแล้วกดปุ่มเพื่อดูเกรด</p>
                 </div>
             </div>
         </div>
@@ -774,8 +858,6 @@
                 }
             );
         });
-
-        renderRecords();
     </script>
 </body>
 </html>
