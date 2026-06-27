@@ -136,6 +136,73 @@
             padding: 5rem 2rem;
         }
 
+        .attendance {
+            background: var(--bg-light);
+        }
+
+        .attendance-card {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            background: var(--white);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .attendance-form label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .attendance-form input,
+        .attendance-form select {
+            width: 100%;
+            padding: 0.9rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        .attendance-form .cta-button {
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0 0 1rem 0;
+        }
+
+        .attendance-status {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .attendance-info h3 {
+            margin-bottom: 0.75rem;
+            color: var(--text-dark);
+        }
+
+        .attendance-info p {
+            color: var(--text-light);
+            margin-bottom: 1rem;
+        }
+
+        .attendance-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .attendance-list li {
+            background: var(--bg-light);
+            padding: 0.8rem 1rem;
+            border-radius: 10px;
+            color: var(--text-dark);
+        }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -431,6 +498,7 @@
             <ul>
                 <li><a href="#about">ฟีเจอร์</a></li>
                 <li><a href="#skills">วิธีใช้</a></li>
+                <li><a href="#attendance">เช็คชื่อ</a></li>
                 <li><a href="#portfolio">ตัวอย่าง</a></li>
                 <li><a href="#contact">ติดต่อ</a></li>
             </ul>
@@ -445,6 +513,34 @@
             <p style="font-size: 1.1rem; margin-bottom: 2rem;">เหมาะสำหรับทีมงาน นักเรียน พนักงาน และองค์กรที่ต้องการระบบเช็คชื่อที่สะดวกและแม่นยำ</p>
             <a href="#portfolio" class="cta-button">ดูฟีเจอร์</a>
             <a href="#contact" class="cta-button secondary">ติดต่อสอบถาม</a>
+        </div>
+    </section>
+
+    <!-- Attendance Section -->
+    <section class="attendance" id="attendance">
+        <div class="container">
+            <h2>เช็คชื่อเลย</h2>
+            <div class="attendance-card">
+                <div class="attendance-form">
+                    <label for="attendeeName">ชื่อผู้เช็คชื่อ</label>
+                    <input id="attendeeName" type="text" placeholder="กรอกชื่อของคุณ" />
+
+                    <label for="attendanceMode">เลือกประเภท</label>
+                    <select id="attendanceMode">
+                        <option value="checkin">เช็คชื่อเข้า</option>
+                        <option value="checkout">เช็คชื่อออก</option>
+                    </select>
+
+                    <button id="attendanceBtn" class="cta-button">เช็คชื่อตอนนี้</button>
+                    <p id="attendanceStatus" class="attendance-status">กำลังรอการเช็คชื่อ...</p>
+                </div>
+                <div class="attendance-info">
+                    <h3>สถานะล่าสุด</h3>
+                    <p id="locationText">ยังไม่ได้เปิดใช้ตำแหน่ง</p>
+                    <h3>ประวัติ 5 รายการล่าสุด</h3>
+                    <ul id="attendanceList" class="attendance-list"></ul>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -599,6 +695,87 @@
         document.querySelectorAll('.skill-card, .portfolio-item').forEach(el => {
             observer.observe(el);
         });
+
+        // Attendance system
+        const attendanceBtn = document.getElementById('attendanceBtn');
+        const attendeeNameInput = document.getElementById('attendeeName');
+        const attendanceModeSelect = document.getElementById('attendanceMode');
+        const attendanceStatus = document.getElementById('attendanceStatus');
+        const locationText = document.getElementById('locationText');
+        const attendanceList = document.getElementById('attendanceList');
+        const storageKey = 'attendanceRecords';
+
+        function renderRecords() {
+            const records = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            if (!records.length) {
+                attendanceList.innerHTML = '<li>ยังไม่มีประวัติการเช็คชื่อ</li>';
+                return;
+            }
+
+            attendanceList.innerHTML = records.slice(0, 5).map(record => {
+                const time = new Date(record.timestamp).toLocaleString('th-TH', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short'
+                });
+                return `<li><strong>${record.name}</strong> — ${record.type === 'checkin' ? 'เช็คชื่อเข้า' : 'เช็คชื่อออก'}<br>${time}</li>`;
+            }).join('');
+        }
+
+        function setStatus(message) {
+            attendanceStatus.textContent = message;
+        }
+
+        function saveAttendance(position) {
+            const name = attendeeNameInput.value.trim();
+            const type = attendanceModeSelect.value;
+
+            if (!name) {
+                setStatus('กรอกชื่อก่อนเช็คชื่อ');
+                attendeeNameInput.focus();
+                return;
+            }
+
+            const record = {
+                name,
+                type,
+                timestamp: new Date().toISOString(),
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy
+            };
+
+            const records = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            records.unshift(record);
+            localStorage.setItem(storageKey, JSON.stringify(records.slice(0, 20)));
+
+            const label = type === 'checkin' ? 'เช็คชื่อเข้า' : 'เช็คชื่อออก';
+            locationText.textContent = `ตำแหน่งล่าสุด: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)} (ความแม่นยำ ${Math.round(position.coords.accuracy)}m)`;
+            setStatus(`${label} สำเร็จแล้วสำหรับ ${name}`);
+            attendeeNameInput.value = '';
+            renderRecords();
+        }
+
+        attendanceBtn.addEventListener('click', function () {
+            if (!navigator.geolocation) {
+                setStatus('เบราว์เซอร์ของคุณไม่รองรับตำแหน่ง');
+                return;
+            }
+
+            setStatus('กำลังขอสิทธิ์ตำแหน่ง...');
+            navigator.geolocation.getCurrentPosition(
+                saveAttendance,
+                function () {
+                    setStatus('ไม่สามารถใช้ตำแหน่งได้ กรุณาอนุญาตให้เข้าถึงตำแหน่ง');
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        });
+
+        renderRecords();
     </script>
 </body>
 </html>
